@@ -379,7 +379,7 @@ let contornCorba = [
   [
     'c',
     '#7B4413',
-    [249, 798],
+    [247, 798],
     [249, 798, 451, 797, 451, 797],
     [458, 710, 441, 585, 333, 542],
     [330, 546, 328, 550, 326, 554],
@@ -398,11 +398,13 @@ let contornCorba = [
     [388, 306, 389, 287, 388, 289],
     [387, 263, 380, 220, 357, 201],
     [346, 179, 328, 185, 305, 162],
-    [291, 152, 246, 153, 246, 153],
+    [291, 152, 246, 153, 245, 153],
   ], //fin curva
 ];
 
 var parpelleja = false;
+
+var scaleDrawing = 1;
 
 var pupila_d = [
     //------------ Pupil·la
@@ -433,11 +435,18 @@ var parpella_e =[
   ['v','#F4BD82',[179,286],[149,306],[177,314],[211,303]], 
 ]
 
+function translateCoords(x, y){
+  var coordV = createVector(x,y);
+  var translatedOrigin = createVector(width/2, height);   
+  return p5.Vector.sub(coordV, translatedOrigin);
+}
+
 class Ull {
   constructor(ull, pupila){
     this.ull = ull;
     this.pupila = pupila;
-    this.origin = [304, 304];
+    this.origin = [304,304];
+    this.tOrigin = translateCoords(...this.origin);
     var forces = [
       dist(this.origin[0], this.origin[1], 0,0),
       dist(this.origin[0], this.origin[1], 0,height),
@@ -450,7 +459,7 @@ class Ull {
 
   draw(){
     push();
-    translate(this.origin[0], this.origin[1]);
+    translate(this.tOrigin.x, this.tOrigin.y);
     rotate(0.1);
     fill('#EFEFEF');
     ellipse(0,0, 61,25);
@@ -542,9 +551,11 @@ var parpelles = [];
 //Per fer-ho, utilitzem les operacions amb vectors.
 function modificarCoordenades(figura){
   figura.forEach(poligon=>{
-      var bVector = createVector(poligon[2][0],poligon[2][1]);        
-      var p = [];
-      p.push(bVector.x, bVector.y);
+      var bVector = createVector(poligon[2][0],poligon[2][1]);     
+      var translatedOrigin = createVector(width/2, height);   
+      var modifiedOrigin = p5.Vector.sub(bVector,translatedOrigin);
+      poligon[2][0] = modifiedOrigin.x;
+      poligon[2][1] = modifiedOrigin.y;
       for(var i = 3; i<poligon.length; i++){
         for(var p = 0; p<poligon[i].length; p+=2){
             var nV = createVector(poligon[i][p], poligon[i][p+1]);            
@@ -559,21 +570,31 @@ function modificarCoordenades(figura){
 function setup() {
   createCanvas(500, 800);
   modificarCoordenades(caraPoligons);
+  console.log(caraPoligons);
   modificarCoordenades(caraCorbes);
   modificarCoordenades(pupila_d);  
   modificarCoordenades(ull_d);
   modificarCoordenades(parpella_e);   
+  console.log(parpella_e);
   modificarCoordenades(contornCorba);   
   modificarCoordenades(contorn);    
   ulls.push(new Ull(ull_d, pupila_d));
-  parpelles.push(new Parpella(parpella_e,  [179,286]));
+  parpelles.push(new Parpella(parpella_e, parpella_e[0][2]));
   frameRate(25);
+  setInterval(parp, 2000);
 };
+
+function parp(){
+  if (!parpelleja) parpelleja = true;
+}
 
 function draw() {
   background('#569A6D');
   patternFons(); //dibuixem el pattern del fons. Un element decoratiu per demostrar com funciona l'opacitat de la sombra  
 
+  push();
+  translate(width/2, height);
+  scale(scaleDrawing);
   push(); // guardem la configuració actual
     noStroke();
     fill(0,0,0,90);  // definim el color de l'ombra. Negre amb opacitat al 90 (35%)
@@ -609,14 +630,22 @@ function draw() {
 
   // Ara afegim les celles, i per aixó utilitzem un gruix de linia específic, ja que seran simples línies.
   strokeWeight(10);
-  stroke(0,0,0); // celles negres
-  line(244,0,244,800); //Dibuixem la linia central
+  stroke(0,0,0); // celles negres  
   dibuixarCelles(); //Afegim les celles
 
   // Afegirem l'ombreig a la part esquerra de la cara, així doncs, configurem el color i la línia
   noStroke();
-  fill(255,0,0,90);
-  dibuixarPoligon(contorn, true);
+  fill(0,0,0,90);
+  if (mouseX < width/2){
+    drawShape(contorn[0],true, false);  
+  }else{
+    drawShape(contornCorba[0],true, false);
+  }
+  pop();
+  // Ara afegim les celles, i per aixó utilitzem un gruix de linia específic, ja que seran simples línies.
+  strokeWeight(10);
+  stroke(0,0,0); // celles negres
+  line(245,0,245,800); //Dibuixem la linia central
   
 }
 
@@ -682,6 +711,12 @@ function dibuixarPoligon(pol, punts = false){
 function keyPressed() {
   if (keyCode === DOWN_ARROW) {
     parpelleja = true; 
+  }else if(keyCode === LEFT_ARROW){
+    scaleDrawing-=0.1;
+     if (scaleDrawing<0.1) scaleDrawing=0.1;
+  }else if(keyCode === RIGHT_ARROW){
+    scaleDrawing+=0.1;
+    if (scaleDrawing>2) scaleDrawing=2;
   }
   return false; // prevent any default behaviour
 }
