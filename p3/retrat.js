@@ -3,9 +3,22 @@
 // El retrat projecta una ombra a la part esquerra i aquesta es troba també ombrejada. Una línia talla pel centre dividint les dues parts.
 
 
+//Opcions de configuració.
+//scaleDrawing defineix l'escala inicial, tot i que es pot canviar al les fletxes esquerra-dreta.
+//patternTiles permet afegir o reduir elements al fons, i modificar la mida d'aquests.
+//eyeSpeed configura el parpelleig.
+var scaleDrawing = 1;
+var patternTiles = 10; // com més gran, més elements tenim al fons, i més petits són.
+var eyeSpeed = 2000; //2 segons
+
+//variable per guardar les instàncies de les classes.
+var ulls = [];
+var parpelles = [];
+
 // Guardem els punts dels polígons dins d'un array per tal d'iterar aquest i dibuixar el model més fàcilment.
+// Afegim un element extra diferent al PAC1 per fer que l'sketch sigui més procedural.
 // Aquest array (caraPoligons) té la següent forma:
-//    [ color (en HEX), [punt_1_x, punt_1_y], [punt_2_x, punt_2_y].....]
+//    [ (NOU) tipus de forma (v=poligon, c= corba), color (en HEX), [punt_1_x, punt_1_y], [punt_2_x, punt_2_y].....]
 // L'ordre dels poligons a l'array és també l'ordre de dibuix, i per tant les capes, d'inferior a superior.
 // Cada element de l'array representa 1 poligon
 
@@ -123,6 +136,7 @@ let caraPoligons = [
 // La segona part, amb les curves, la guardem també en un array similar a l'anterior, però modificant els components de cada punt.
 // Aquest array (caraCorbes) té la següent forma:
 //    [ 
+//      (NOU) tipus de forma (v=poligon, c= corba)
 //      color (en HEX), 
 //      [anchor_1_x, anchor_1_y], -> el primer anchor de la corba
 //      [Acontrol1_x, Acontrol1_y, Acontrol2_x, Acontrol2_y, Aanchor2_x, Aanchor2_y], -> cada Bezier te 2 controls i 2 anchors, el primer anchor és l'últim de la corba anterior
@@ -354,6 +368,7 @@ let caraCorbes = [
 // Guardem el contorn de la part poligonal a un array anomenat "contorn" amb els punts d'aquest. Aquest array l'utilitzarem per les ombres.
 // Cada element de l'array conté les coordenades [x,y] d'un punt del polígon tancat.
 
+//Corbes i poligons de l'ombra.
 let contorn = [[
   'v', '#000000',
   [245,150],
@@ -373,7 +388,6 @@ let contorn = [[
   [33,800], 
   [245,800]]
 ];
-
 let contornCorba = [
   //Curva 
   [
@@ -402,10 +416,8 @@ let contornCorba = [
   ], //fin curva
 ];
 
-var parpelleja = false;
-
-var scaleDrawing = 1;
-
+// Definim els ulls,parpelles i pupiles.
+//------------  ULL DRETA ------------
 var pupila_d = [
     //------------ Pupil·la
     [
@@ -417,7 +429,7 @@ var pupila_d = [
       ], 
       //------------ Fi Pupil·la
 ]
-
+//All ulls fem una petita variació. El primer poligon es el fons, la resta de poligons es dibuixen a la capa superior per enmascarar la pupila.
 var ull_d = [
     //------------ Ull
     [
@@ -441,20 +453,6 @@ var ull_d = [
     //------------ Fi Ullera
       //------------ Fi Ull
 ]
-
-var parpella_e =[
-  ['v','#F4BD82',[179,286],[149,306],[177,314],[211,303]], 
-]
-var ull_e =[
-  ['v','#FFFFFF',[179,286],[149,306],[177,314],[211,303]], 
-  ['v','#F4BD82',[163,297],[179,286],[211,303],[177,314],[173,312],[178,321],[226,303],[178,280],[155,285]], 
-  ['v','#F8AF66',[155,285],[131,309],[178,321],[173,312],[149,306],[163,297]], 
-]
-var pupila_e = [
-  ['v',"#6D2A11",[183,298],[179,305],[175,300], [177,298] ], 
-]
-
-
 var parpella_d =[
   [
     'c',
@@ -468,46 +466,58 @@ var parpella_d =[
     [273, 299, 279, 292, 292, 291],
     ], 
 ] 
+//------------  ULL ESQUERRA ------------
+var parpella_e =[
+  ['v','#F4BD82',[179,286],[149,306],[177,314],[211,303]], 
+]
+var ull_e =[
+  ['v','#FFFFFF',[179,286],[149,306],[177,314],[211,303]], 
+  ['v','#F4BD82',[163,297],[179,286],[211,303],[177,314],[173,312],[178,321],[226,303],[178,280],[155,285]], 
+  ['v','#F8AF66',[155,285],[131,309],[178,321],[173,312],[149,306],[163,297]], 
+]
+var pupila_e = [
+  ['v',"#6D2A11",[183,298],[179,305],[175,300], [177,298] ], 
+]
 
-function translateCoords(x, y){
-  var coordV = createVector(x,y);
-  var translatedOrigin = createVector(width/2, height);   
-  return p5.Vector.sub(coordV, translatedOrigin);
-}
+//Definim les classes que utilizarem i ens ajuden per l'animació. Tenim un calsse per els Ulls i una altra per les parpelles.
 
 class Ull {
   constructor(ull, pupila, origin){
-    this.ull = ull;
-    this.pupila = pupila;
-    this.origin = origin;
-    this.tOrigin = translateCoords(...this.origin);
+
+    //La pupila respon a la posició del ratolí. Hem de fer una serie d'adaptacions perquè les coordenades del ratolí son absolutes.
+
+    this.ull = ull;  //shape per l'ull i les màscares
+    this.pupila = pupila; //shape per la pupila
+    this.origin = origin; //punt on es posiciona la pupila
+    this.tOrigin = translateCoords(...this.origin); // traslladem l'origen a coordenades relatives.
+    //Per definir els límits del mapping relatiu al ratolí, mirem la distància amb les 4 cantonades.
     var forces = [
       dist(this.origin[0], this.origin[1], 0,0),
       dist(this.origin[0], this.origin[1], 0,height),
       dist(this.origin[0], this.origin[1], width,0),
       dist(this.origin[0], this.origin[1], width, height),
-    ];
-    this.maxForca = Math.max(...forces);    
-    this.originVector = createVector(this.origin[0], this.origin[1]);
+    ];  
+    this.maxForca = Math.max(...forces); // identifiquem la força màxima.   
+    this.originVector = createVector(this.origin[0], this.origin[1]); //guardem l'origen de la pupila (abs) com a vector.
   }
 
   draw(){
-    push();
-    //rotate(0.1);
-    //fill('#EFEFEF');
-    drawShape(this.ull[0]);
-    translate(this.tOrigin.x, this.tOrigin.y);
-    //ellipse(0,0, 61,25);
-    var forca = dist(this.origin[0], this.origin[1],mouseX, mouseY);
-    var mouseVector = createVector(mouseX, mouseY);
-    var direction = p5.Vector.sub(mouseVector, this.originVector);
-    direction.normalize().mult(map(forca, 0, this.maxForca, 0, 10));
-    applyMatrix(1, 0, 0, 1, direction.x, direction.y);
-    this.pupila.forEach(poligon => {
-      drawShape(poligon, false);
-    })
-    pop();
-    
+    var forca = dist(this.origin[0], this.origin[1],mouseX, mouseY); //distància entre la pupila i el ratolí
+    var mouseVector = createVector(mouseX, mouseY); //posició del ratolí com a vector
+    var direction = p5.Vector.sub(mouseVector, this.originVector); // agafem la direcció i força de la distancia entre el ratolí i la pupila.
+    // calculem el vector de desplaçament per la pupila. Amb aquesta técnica aconseguim que l'influéncia tingui en compte la distància del ratolí
+    // amb la pupila. Això ens dona una animació més natural.
+    direction.normalize().mult(map(forca, 0, this.maxForca, 0, 10)); //normalitzem i escalem en funció de la distància.
+
+    push(); //farem transformacions basades en la pupila, així doncs, salvem el matrix anterior.
+      drawShape(this.ull[0]); // dibuixem el fons de l'ull.
+      translate(this.tOrigin.x, this.tOrigin.y); //ens movem a la posició de la pupila      
+      applyMatrix(1, 0, 0, 1, direction.x, direction.y); // apliquem la "força" del ratolí. Es podria fer amb translate també...
+      this.pupila.forEach(poligon => {
+        drawShape(poligon, false); //Dibuixem la pupila
+      })
+    pop(); //tornem al matrix anterior.
+    //dibuixem els elements "exteriors" que ens ajuden a "enmascarar" la pupila.
     if( this.ull.length > 1){
       for(var i = 1; i< this.ull.length; i++){
         drawShape(this.ull[i]);
@@ -516,36 +526,42 @@ class Ull {
   }
 }
 
+//auqesta clase s'encarrega del tancament de la parpella.
 class Parpella {
 
   constructor(poligon, anchor){
-    this.poligon = poligon;
+    this.poligon = poligon; //shape de la parpella
     this.scale = 0.5;
-    this.interval = 0.1;
-    this.anchor = anchor;
-    this.tancar = true;
-    this.enMoviment = false;
+    this.interval = 0.1; //velocitat de tancament
+    this.anchor = anchor; //anchor per la transformació d'escala
+    this.tancar = true; //direcció de l'animació
+    this.enMoviment = false; //si s'ha d'animar
   }
 
+  //cridem aquesta funció per començar l'animació
   start(){
     this.enMoviment = true;
   }
 
   draw(){  
-    push();        
-    if(this.enMoviment && this.tancar){
-      this.scale = easeOutCirc(this.scale+this.interval);
-    }else if (this.enMoviment && !this.tancar){
-      this.scale = easeInCirc(this.scale-this.interval) ;
-    }else{
-      this.scale = 0;
-    }
-    translate(this.anchor[0],this.anchor[1]);
-    scale(1,this.scale);
-    this.poligon.forEach(poligon=>{
-      drawShape(poligon, false);
-    }); 
-    pop();
+    push(); //utilizemt l'scale, així que guardem el transformation matrix.
+      //Si tenim moviment, actualitzem el valor de l'escala Y.
+      // per fer una animació més natural, utilitzem funcions d'ease.
+      if(this.enMoviment && this.tancar){
+        this.scale = easeOutCirc(this.scale + this.interval); 
+      }else if (this.enMoviment && !this.tancar){
+        this.scale = easeInCirc(this.scale - this.interval) ;
+      }else{
+        this.scale = 0;
+      }
+      translate(this.anchor[0],this.anchor[1]); //ens movem a la posicó de l'escala
+      scale(1,this.scale); //apliquem l'escala.
+      this.poligon.forEach(poligon=>{
+        drawShape(poligon, false); //dibuix de la parpella
+      }); 
+    pop(); // retornem a la situació normal
+
+    //controlem quan s'ha d'invertir el moviment.
     if (this.scale == 1 ) {
       this.tancar = false;      
     }else if(this.scale == 0 && this.enMoviment){
@@ -555,19 +571,181 @@ class Parpella {
   }
 }
 
+function setup() {
+  createCanvas(500, 800);
+  //utilitzem la funció "modificarCoordenades" per traslladar els objectes de coordenades absolutes a relatives.
+  modificarCoordenades(caraPoligons);
+  modificarCoordenades(caraCorbes);
+  modificarCoordenades(pupila_d);  
+  modificarCoordenades(pupila_e);  
+  modificarCoordenades(ull_d);
+  modificarCoordenades(ull_e);
+  modificarCoordenades(parpella_e);   
+  modificarCoordenades(parpella_d);
+  modificarCoordenades(contornCorba);   
+  modificarCoordenades(contorn);    
+  //creem els objectes per l'animació dels ulls
+  ulls.push(new Ull(ull_d, pupila_d, [304,304]));
+  ulls.push(new Ull(ull_e, pupila_e, [183,298]));
+  parpelles.push(new Parpella(parpella_e, parpella_e[0][2]));
+  parpelles.push(new Parpella(parpella_d, parpella_d[0][2]));
+  //definim un framRate desitjat que permeti una animació fluida.
+  frameRate(25);
+  //la rutina que s'encarrega d'animar el parpelleig automàtic.
+  setInterval(parpelleig, eyeSpeed);
+};
+
+function draw() {
+  background('#569A6D');
+  patternFons(); //dibuixem el pattern del fons. Un element decoratiu per demostrar com funciona l'opacitat de la sombra  
+
+  push();
+    //per permetre fer l'escala, movem l'origen al punt del centre inferior. Aquest punt s'ha utilitzat també per definir les coordenades relative
+    //que configurem a la funció "modificarCoordenades"
+    translate(width/2, height);
+    scale(scaleDrawing); //definim l'escala. scaleDrawing es modifica al keyEvent
+    push(); // guardem la configuració actual
+      noStroke();
+      fill(0,0,0,90);  // definim el color de l'ombra. Negre amb opacitat al 90 (35%)
+      var dispX = map(mouseX - width/2, -width/2, width/2, -15, 15);  //calculem el desplaçament de l'ombra. en funció de la distància amb el ratolí      
+      translate(-dispX, 0); // movem les coordenades segons la posició del ratolí
+                          // aquest desplaçament ens permet utilitzar el mateix polígon que pel contorn per tal de fer l'ombra
+                          // sense haver de canviar les coordenades    
+      drawShape(contorn[0], true, false); //Dibuixem les ombres. El color ja està definit aquí, així que ignorem la configuració del poligon.
+      drawShape(contornCorba[0], true, false);
+    pop(); // tornem a la configuració anterior (desfem "translate")
+
+    // Ara dibuixem el retrat. Per tal de resoldre errades d'alineació entre les figures i posibles forats
+    // fem que totes le sfigures dibuixades tinguin una linia exterior d'1 pixel, amb el mateix color que el farçit.
+    strokeWeight(1);  
+    strokeJoin(ROUND);    
+    caraPoligons.forEach(poligon=>{
+      drawShape(poligon); //utilitzem la nova funció que dibuixa qualsevol shape.
+    })
+    caraCorbes.forEach(poligon=>{
+      drawShape(poligon); //utilitzem la nova funció que dibuixa qualsevol shape.
+    })
+    
+    ulls.forEach(ull=>{
+      ull.draw(); //dibuixem cada ull
+    });
+    parpelles.forEach(parpella=>{
+      parpella.draw(); //dibuixem cada parpella
+    })
+
+    // Ara afegim les celles, i per aixó utilitzem un gruix de linia específic, ja que seran simples línies.
+    strokeWeight(10);
+    stroke(0,0,0); // celles negres  
+    dibuixarCelles(); //Afegim les celles
+
+    // Afegirem l'ombreig a la cara. Dibuixem una forma o l'altre segons a quin costat es troba el ratolí
+    noStroke();
+    fill(0,0,0,90);
+    if (mouseX > width/2){
+      drawShape(contorn[0],true, false);  
+    }else{
+      drawShape(contornCorba[0],true, false);
+    }
+  pop(); //tornem a les coordenades i escala original
+  
+  //Dibuixem la linia central. Aquesta no necesita forma part de les transformacions, així que millor fora del "push"
+  strokeWeight(10);
+  stroke(0,0,0);
+  line(245,0,245,800); //Dibuixem la linia central
+}
+
+//Itera per les parpelles i inicia el moviment. Cridat per timeout al setup.
+function parpelleig(){
+  parpelles.forEach(parpella=>{
+    parpella.start();
+  })
+}
+
+//Aquesta funció dibuixa les celles
+function dibuixarCelles(){
+  // Volem que les celles segueixen l'aparença de la cara (angles i corbes)
+  // Per aixó definim els JOINTS i CAPS per cada cella
+  strokeJoin(BEVEL);
+  strokeCap(SQUARE);
+  noFill(); // només volem línia
+
+  //l'origen de coordenades es troba al punt central inferior.
+  //Primer la cella en angles
+  beginShape();
+     vertex(-95, -513);
+     vertex(-68, -525);
+     vertex(-38, -510);
+  endShape(); //no cal que tanquem la forma
+
+  strokeCap(ROUND); // ara la cella corba
+  arc(50, -508, 60, 30, -PI + ( QUARTER_PI / 2 ), -QUARTER_PI);
+};
+
+//Aquesta funció dibuixa els patterns del fons
+function patternFons(){
+  noStroke();  //sense linia
+  fill(255, 255, 255, 30); // color blanc amb 30 d'opacitat.
+  var tileSize = Math.round(width/2/patternTiles); //definim la mida en funció de la configuració
+  var radius = 0;
+  radius = (tileSize-5) + (sin(millis()/400)*3); //per animar el fons, utilitzem sin & milis. Escalem els valors per tal de controlar la velocitat.
+  //Començem amb el "diamants". Els espaiem 25 pixels.
+  //Utilitzem dos bucles per tal de recórrer l'espai en files i columnes
+  for( let x = 0; x < 250; x += tileSize ){
+    for( let y = 0; y < 800; y += tileSize ){      
+      quad(x, y, x + radius/2, y + radius/2, x, y + radius, x - radius/2, y + radius/2); //posicionem els 4 punts necesaris per definir la forma quadrilàtera, de 20 pixels d'ample i alt.
+    }
+  }
+
+  //A continuació farem els cercles. Comemçem a la coordenada 240 a l'eix X i seguim un patró similar a l'anterior
+  for( let x = 240; x < 500; x += tileSize){
+    for( let y = 0; y < 800; y += tileSize){      
+      ellipse(x + 10, y + 10, radius, radius); //donat que la primera coordenada es el centre, hem de correguir la posició. Enlloc de 20pixels de diàmetre, 18 sembla visualment més correcte.
+    }
+  }
+};
+
+//Iteració amb el teclat
+function keyPressed() {
+  if (keyCode === DOWN_ARROW) {
+    parpelleig(); // fem un parpelleig.
+  }else if(keyCode === LEFT_ARROW){
+    scaleDrawing-=0.1; //fem la imatge més petita
+     if (scaleDrawing<0.1) scaleDrawing=0.1; //controlem un limit inferior
+  }else if(keyCode === RIGHT_ARROW){
+    scaleDrawing+=0.1; //fem la imatge més gran
+    if (scaleDrawing>2) scaleDrawing=2; //controlem un límit superior
+  }
+  return false; // evitem el funcionament normal
+}
+
+// Aquesta es una funció d'ajuda que ens permet agafar una coordenada i retorna un vector relatiu amb l'origen de coordenades al centre inferior del canvas.
+function translateCoords(x, y){
+  var coordV = createVector(x,y);
+  var translatedOrigin = createVector(width/2, height);   
+  return p5.Vector.sub(coordV, translatedOrigin);
+}
+
+//Ease per fer animació més natural. Basat en les funcions de Andrey Sitnik and Ivan Solovev https://easings.net/#
 function easeOutCirc(x) {
   return round(sqrt(1 - pow(x - 1, 2)), 3);
 }
 
+//Ease per fer animació més natural. Basat en les funcions de Andrey Sitnik and Ivan Solovev https://easings.net/#
 function easeInCirc(x) {
   if (x<0) return 0; // si el numero es <0, sqrt dona errada!
   return round(1 - sqrt(1 - pow(x, 2)),5);
 }
 
+//Aquesta funció substueix les antigues dibuixarCaraPoligons, dibuixarCaraCorbes i dibuixarPoligon
+// amb la variable extra afegida als array (index 0 = tipus de shape) podem generalitzar el dibuix.
+// Params:
+// s: shape que s'ha de dibuixar
+// move: si s'ha de traslladar l'oriden de coordenades al primer punt
+// paint: si s'ha d'aplicar fill o no
 function drawShape(s, move = true, paint=true){
-  var shapeType = s[0];
+  var shapeType = s[0]; // mirem el tipus de forma.
   push();
-    if (move) translate(s[2][0],s[2][1]);
+    if (move) translate(s[2][0],s[2][1]); // a vegades no necessitem moure les coordenades
     beginShape();
     if(paint) fill(s[1]); // en el numero 0 sempre tenim el color en HEX
     if(paint) stroke(s[1]); //truc per resoldre errades i forats, el gruix de la linia està definit a la funció draw com 1 pixel.
@@ -585,16 +763,15 @@ function drawShape(s, move = true, paint=true){
   pop();
 }
 
-var ulls = [];
-var parpelles = [];
-
 //Els arrays es troben en coordeandes absolutes, pero amb aquest funció convertim tot a coordenades relatives.
 //Per fer-ho, utilitzem les operacions amb vectors.
+//Aixó ens permet realitzar les animacions amb transformacions sencilles.
 function modificarCoordenades(figura){
   figura.forEach(poligon=>{
       var bVector = createVector(poligon[2][0],poligon[2][1]);     
       var translatedOrigin = createVector(width/2, height);   
-      var modifiedOrigin = p5.Vector.sub(bVector,translatedOrigin);
+      var modifiedOrigin = p5.Vector.sub(bVector,translatedOrigin); //utlitzem la diferéncia entre dos vectors, per obtenir les coordenades relatives.
+      //el primer punt del poligon, serà el punt d'origen de la transformació relativa.
       poligon[2][0] = modifiedOrigin.x;
       poligon[2][1] = modifiedOrigin.y;
       for(var i = 3; i<poligon.length; i++){
@@ -606,152 +783,4 @@ function modificarCoordenades(figura){
         }
     }
   });
-}
-
-function setup() {
-  createCanvas(500, 800);
-  modificarCoordenades(caraPoligons);
-  modificarCoordenades(caraCorbes);
-  modificarCoordenades(pupila_d);  
-  modificarCoordenades(pupila_e);  
-  modificarCoordenades(ull_d);
-  modificarCoordenades(ull_e);
-  modificarCoordenades(parpella_e);   
-  modificarCoordenades(parpella_d);
-  modificarCoordenades(contornCorba);   
-  modificarCoordenades(contorn);    
-  ulls.push(new Ull(ull_d, pupila_d, [304,304]));
-  ulls.push(new Ull(ull_e, pupila_e, [183,298]));
-  parpelles.push(new Parpella(parpella_e, parpella_e[0][2]));
-  parpelles.push(new Parpella(parpella_d, parpella_d[0][2]));
-  frameRate(25);
-  setInterval(parp, 2000);
-  
-};
-
-function parp(){
-  parpelles.forEach(parpella=>{
-    parpella.start();
-  })
-}
-
-function draw() {
-  background('#569A6D');
-  patternFons(); //dibuixem el pattern del fons. Un element decoratiu per demostrar com funciona l'opacitat de la sombra  
-
-  push();
-  translate(width/2, height);
-  scale(scaleDrawing);
-  push(); // guardem la configuració actual
-    noStroke();
-    fill(0,0,0,90);  // definim el color de l'ombra. Negre amb opacitat al 90 (35%)
-    var dispX = map(mouseX - width/2, -width/2, width/2, -15, 15); 
-    //var dispY = map(mouseY - height/2, -height/2, height/2, -15, 15); 
-    translate(-dispX, 0); // movem les coordenades -15 a l'eix X i 10 a l'eix Y. 
-                        // aquest desplaçament ens permet utilitzar el mateix polígon que pel contorn per tal de fer l'ombra
-                        // sense haver de canviar les coordenades
-    //dibuixarPoligon(contorn); // aquest funció dibuixa qualsevol forma que li pasem com a paràmetre.
-    drawShape(contorn[0],true, false);
-    drawShape(contornCorba[0],true, false);
-  pop(); // tornem a la configuració anterior (desfem "translate")
-
-  // Ara dibuixem el retrat. Per tal de resoldre errades d'alineació entre les figures i posibles forats
-  // fem que totes le sfigures dibuixades tinguin una linia exterior d'1 pixel, amb el mateix color que el farçit.
-  strokeWeight(1);  
-  strokeJoin(ROUND);
-  //drawShape(caraPoligons);
-  caraPoligons.forEach(poligon=>{
-    //console.log(poligon);
-    drawShape(poligon);
-  })
-  caraCorbes.forEach(poligon=>{
-    drawShape(poligon);
-  })
-  
-  ulls.forEach(ull=>{
-    ull.draw();
-  });
-  parpelles.forEach(parpella=>{
-    parpella.draw();
-  })
-
-  // Ara afegim les celles, i per aixó utilitzem un gruix de linia específic, ja que seran simples línies.
-  strokeWeight(10);
-  stroke(0,0,0); // celles negres  
-  dibuixarCelles(); //Afegim les celles
-
-  // Afegirem l'ombreig a la part esquerra de la cara, així doncs, configurem el color i la línia
-  noStroke();
-  fill(0,0,0,90);
-  if (mouseX > width/2){
-    drawShape(contorn[0],true, false);  
-  }else{
-    drawShape(contornCorba[0],true, false);
-  }
-  pop();
-
-  strokeWeight(10);
-  stroke(0,0,0); // celles negres
-  line(245,0,245,800); //Dibuixem la linia central
-  
-}
-
-//Aquesta funció dibuixa les celles
-function dibuixarCelles(){
-  // Volem que les celles segueixen l'aparença de la cara (angles i corbes)
-  // Per aixó definim els JOINTS i CAPS per cada cella
-  strokeJoin(BEVEL);
-  strokeCap(SQUARE);
-  noFill(); // només volem línia
-
-  //Primer la cella en angles
-  beginShape();
-   // vertex(152, 283);
-   // vertex(180, 270);
-   // vertex(210, 285);
-     vertex(-95, -513);
-     vertex(-68, -525);
-     vertex(-38, -510);
-  endShape(); //no cal que tanquem la forma
-
-  strokeCap(ROUND); // ara la cella corba
-  //arc(299, 295, 60, 30, -PI + ( QUARTER_PI / 2 ), -QUARTER_PI);
-  arc(50, -508, 60, 30, -PI + ( QUARTER_PI / 2 ), -QUARTER_PI);
-};
-
-//Aquesta funció dibuixa els patterns del fons
-function patternFons(){
-  noStroke();  //sense linia
-  fill(255, 255, 255, 30); // color blanc amb 30 d'opacitat.
-  var radius = 0;
-  radius = 18 + (sin(millis()/400)*3) ;
-  //Començem amb el "diamants". Els espaiem 25 pixels.
-  //Utilitzem dos bucles per tal de recórrer l'espai en files i columnes
-  for( let x = 0; x < 250; x += 25 ){
-    for( let y = 0; y < 800; y += 25 ){      
-      quad(x, y, x + radius/2, y + radius/2, x, y + radius, x - radius/2, y + radius/2); //posicionem els 4 punts necesaris per definir la forma quadrilàtera, de 20 pixels d'ample i alt.
-    }
-  }
-
-  //A continuació farem els cercles. Comemçem a la coordenada 240 a l'eix X i seguim un patró similar a l'anterior
-  for( let x = 240; x < 500; x += 25){
-    for( let y = 0; y < 800; y += 25){      
-      ellipse(x + 10, y + 10, radius, radius); //donat que la primera coordenada es el centre, hem de correguir la posició. Enlloc de 20pixels de diàmetre, 18 sembla visualment més correcte.
-    }
-  }
-};
-
-function keyPressed() {
-  if (keyCode === DOWN_ARROW) {
-    parpelles.forEach(parpella=>{
-      parpella.start();
-    }); 
-  }else if(keyCode === LEFT_ARROW){
-    scaleDrawing-=0.1;
-     if (scaleDrawing<0.1) scaleDrawing=0.1;
-  }else if(keyCode === RIGHT_ARROW){
-    scaleDrawing+=0.1;
-    if (scaleDrawing>2) scaleDrawing=2;
-  }
-  return false; // prevent any default behaviour
 }
