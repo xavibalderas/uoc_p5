@@ -1,0 +1,12 @@
+Per tal de realitzar aquest exercici podreu partir del vostre personatge/autoretrat que vau realitzar a la PEC1 o bé crear-ne un de nou (en aquest cas no entrarem a fer una valoració estètica d’aquest).
+La idea serà que aprenguem a incorporar elements interactius dins el nostre dibuix. Aquestes interaccions podrán ser de qualsevol mena (ja sigui a través del teclat, del ratolí, fletxes, elements que estiguin dins el canvas...). 
+Del que es tracta és que a través d’aquestes accions, puguem modificar el contingut/aparença/forma del personatge i/o del que l’envolta (per exemple, nous elements que hagueu volgut incorporar). 
+Per tal de realitzar-lo haureu de complir els següents criteris:
+	•	Poder modificar dos o més elements del canvas. 
+	(DONE)	Utilitzar almenys dos tipus d’interaccions diferents, una de ratolí i una de teclat.
+	(DONE)	Afegir elements de disseny al personatge/autoretrat. 
+	(DONE)	Fer servir una translació, rotació o escala a una de les modificacions (vegeu l’apartat 2.3.3 del material docent de l’assignatura)
+	(DONE)	Activar almenys una interacció tenint en compte la posició del ratolí (veure l’apartat 3.4 del material docent de l’assignatura). 
+	(DONE)	Extra: Reparteix en una o varies funcions* el teu codi del autoretrat/personatge per tal de gaudir d’un codi una mica més endreçat al draw principal. 
+	(DONE)	Extra: Fes servir la funció de distància* amb almenys un element del canvas per tal d’interactuar amb el aquest tenint en compte la distància del element amb el ratolí ( veure apartat de continguts i recursos extres: dist() i map() ) 
+    (DONE) Extra: Afegeix alguns elements gràfics de fons amb animacions subtils (en loop permanent) fent servir funcions tals com sin()* i millis()*.
