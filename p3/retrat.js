@@ -64,7 +64,7 @@ let caraPoligons = [
   ['v',"#EFEFEF",[179,286],[149,306],[177,314],[211,303]],
   //------------ Fi Ulls
     //------------ Pupila
-    ['v',"#6D2A11",[183,298],[179,307],[170,300], [177,296] ], 
+//    ['v',"#6D2A11",[183,298],[179,307],[170,300], [177,296] ], 
     //------------ Fi Pupila
   //------------ Llavis
   ['v',"#CF3030",[217,442],[218,447],[225,447]], 
@@ -422,6 +422,17 @@ var ull_d = [
     //------------ Ull
     [
       'c',
+      '#FFFFFF',
+      [292, 291],
+      [301, 290, 316, 293, 325, 297],
+      [333, 301, 335, 305, 334, 308],
+      [334, 311, 328, 315, 314, 315],
+      [301, 316, 290, 315, 281, 311],
+      [276, 309, 274, 305, 273, 301],
+      [273, 299, 279, 292, 292, 291],
+    ], 
+    [
+      'c',
       '#F4BD82',
         [274, 307],
         [281, 318, 327, 318, 335, 310],
@@ -434,6 +445,29 @@ var ull_d = [
 var parpella_e =[
   ['v','#F4BD82',[179,286],[149,306],[177,314],[211,303]], 
 ]
+var ull_e =[
+  ['v','#FFFFFF',[179,286],[149,306],[177,314],[211,303]], 
+  ['v','#F4BD82',[163,297],[179,286],[211,303],[177,314],[173,312],[178,321],[226,303],[178,280],[155,285]], 
+  ['v','#F8AF66',[155,285],[131,309],[178,321],[173,312],[149,306],[163,297]], 
+]
+var pupila_e = [
+  ['v',"#6D2A11",[183,298],[179,305],[175,300], [177,298] ], 
+]
+
+
+var parpella_d =[
+  [
+    'c',
+    '#FFDAB6',
+    [292, 291],
+    [301, 290, 316, 293, 325, 297],
+    [333, 301, 335, 305, 334, 308],
+    [334, 311, 328, 315, 314, 315],
+    [301, 316, 290, 315, 281, 311],
+    [276, 309, 274, 305, 273, 301],
+    [273, 299, 279, 292, 292, 291],
+    ], 
+] 
 
 function translateCoords(x, y){
   var coordV = createVector(x,y);
@@ -442,10 +476,10 @@ function translateCoords(x, y){
 }
 
 class Ull {
-  constructor(ull, pupila){
+  constructor(ull, pupila, origin){
     this.ull = ull;
     this.pupila = pupila;
-    this.origin = [304,304];
+    this.origin = origin;
     this.tOrigin = translateCoords(...this.origin);
     var forces = [
       dist(this.origin[0], this.origin[1], 0,0),
@@ -459,10 +493,11 @@ class Ull {
 
   draw(){
     push();
+    //rotate(0.1);
+    //fill('#EFEFEF');
+    drawShape(this.ull[0]);
     translate(this.tOrigin.x, this.tOrigin.y);
-    rotate(0.1);
-    fill('#EFEFEF');
-    ellipse(0,0, 61,25);
+    //ellipse(0,0, 61,25);
     var forca = dist(this.origin[0], this.origin[1],mouseX, mouseY);
     var mouseVector = createVector(mouseX, mouseY);
     var direction = p5.Vector.sub(mouseVector, this.originVector);
@@ -473,9 +508,11 @@ class Ull {
     })
     pop();
     
-    this.ull.forEach(poligon => {
-      drawShape(poligon);
-    })
+    if( this.ull.length > 1){
+      for(var i = 1; i< this.ull.length; i++){
+        drawShape(this.ull[i]);
+      }
+    }
   }
 }
 
@@ -487,15 +524,19 @@ class Parpella {
     this.interval = 0.1;
     this.anchor = anchor;
     this.tancar = true;
+    this.enMoviment = false;
   }
+
+  start(){
+    this.enMoviment = true;
+  }
+
   draw(){  
     push();        
-    if(parpelleja && this.tancar){
+    if(this.enMoviment && this.tancar){
       this.scale = easeOutCirc(this.scale+this.interval);
-      console.log(this.scale);
-    }else if (parpelleja && !this.tancar){
+    }else if (this.enMoviment && !this.tancar){
       this.scale = easeInCirc(this.scale-this.interval) ;
-      console.log(this.scale);
     }else{
       this.scale = 0;
     }
@@ -507,8 +548,8 @@ class Parpella {
     pop();
     if (this.scale == 1 ) {
       this.tancar = false;      
-    }else if(this.scale == 0 && parpelleja){
-      parpelleja = false;
+    }else if(this.scale == 0 && this.enMoviment){
+      this.enMoviment = false;
       this.tancar=true;
     }
   }
@@ -527,7 +568,7 @@ function drawShape(s, move = true, paint=true){
   var shapeType = s[0];
   push();
     if (move) translate(s[2][0],s[2][1]);
-    beginShape(); //començem la forma    
+    beginShape();
     if(paint) fill(s[1]); // en el numero 0 sempre tenim el color en HEX
     if(paint) stroke(s[1]); //truc per resoldre errades i forats, el gruix de la linia està definit a la funció draw com 1 pixel.
     vertex(0, 0);
@@ -570,22 +611,28 @@ function modificarCoordenades(figura){
 function setup() {
   createCanvas(500, 800);
   modificarCoordenades(caraPoligons);
-  console.log(caraPoligons);
   modificarCoordenades(caraCorbes);
   modificarCoordenades(pupila_d);  
+  modificarCoordenades(pupila_e);  
   modificarCoordenades(ull_d);
+  modificarCoordenades(ull_e);
   modificarCoordenades(parpella_e);   
-  console.log(parpella_e);
+  modificarCoordenades(parpella_d);
   modificarCoordenades(contornCorba);   
   modificarCoordenades(contorn);    
-  ulls.push(new Ull(ull_d, pupila_d));
+  ulls.push(new Ull(ull_d, pupila_d, [304,304]));
+  ulls.push(new Ull(ull_e, pupila_e, [183,298]));
   parpelles.push(new Parpella(parpella_e, parpella_e[0][2]));
+  parpelles.push(new Parpella(parpella_d, parpella_d[0][2]));
   frameRate(25);
   setInterval(parp, 2000);
+  
 };
 
 function parp(){
-  if (!parpelleja) parpelleja = true;
+  parpelles.forEach(parpella=>{
+    parpella.start();
+  })
 }
 
 function draw() {
@@ -600,7 +647,7 @@ function draw() {
     fill(0,0,0,90);  // definim el color de l'ombra. Negre amb opacitat al 90 (35%)
     var dispX = map(mouseX - width/2, -width/2, width/2, -15, 15); 
     //var dispY = map(mouseY - height/2, -height/2, height/2, -15, 15); 
-    translate(dispX, 0); // movem les coordenades -15 a l'eix X i 10 a l'eix Y. 
+    translate(-dispX, 0); // movem les coordenades -15 a l'eix X i 10 a l'eix Y. 
                         // aquest desplaçament ens permet utilitzar el mateix polígon que pel contorn per tal de fer l'ombra
                         // sense haver de canviar les coordenades
     //dibuixarPoligon(contorn); // aquest funció dibuixa qualsevol forma que li pasem com a paràmetre.
@@ -636,13 +683,13 @@ function draw() {
   // Afegirem l'ombreig a la part esquerra de la cara, així doncs, configurem el color i la línia
   noStroke();
   fill(0,0,0,90);
-  if (mouseX < width/2){
+  if (mouseX > width/2){
     drawShape(contorn[0],true, false);  
   }else{
     drawShape(contornCorba[0],true, false);
   }
   pop();
-  // Ara afegim les celles, i per aixó utilitzem un gruix de linia específic, ja que seran simples línies.
+
   strokeWeight(10);
   stroke(0,0,0); // celles negres
   line(245,0,245,800); //Dibuixem la linia central
@@ -659,13 +706,17 @@ function dibuixarCelles(){
 
   //Primer la cella en angles
   beginShape();
-    vertex(152, 283);
-    vertex(180, 270);
-    vertex(210, 285);
+   // vertex(152, 283);
+   // vertex(180, 270);
+   // vertex(210, 285);
+     vertex(-95, -513);
+     vertex(-68, -525);
+     vertex(-38, -510);
   endShape(); //no cal que tanquem la forma
 
   strokeCap(ROUND); // ara la cella corba
-  arc(299, 295, 60, 30, -PI + ( QUARTER_PI / 2 ), -QUARTER_PI);
+  //arc(299, 295, 60, 30, -PI + ( QUARTER_PI / 2 ), -QUARTER_PI);
+  arc(50, -508, 60, 30, -PI + ( QUARTER_PI / 2 ), -QUARTER_PI);
 };
 
 //Aquesta funció dibuixa els patterns del fons
@@ -690,27 +741,11 @@ function patternFons(){
   }
 };
 
-// Aquesta funció dibuixa una forma tancada seguint els punts pasat a l'array com a paràmetere.
-// Params: pol = Array bidimensional de punts en format [x,y]
-//         punts = Bool. Si és cert, enlloc de la forma tancada es dibuixen els punts en vermell. S'utilitza per depurar i definir les imatges. Per defecte és falsa.
-function dibuixarPoligon(pol, punts = false){    
-    if (punts == true){
-      stroke('red');
-      strokeWeight(4);
-      noFill();
-      beginShape(POINTS);
-    }else{
-      beginShape();
-    }    
-    pol.forEach( punto => {
-      vertex(punto[0], punto[1]);
-    });
-    endShape(CLOSE);  //tancat
-};
-
 function keyPressed() {
   if (keyCode === DOWN_ARROW) {
-    parpelleja = true; 
+    parpelles.forEach(parpella=>{
+      parpella.start();
+    }); 
   }else if(keyCode === LEFT_ARROW){
     scaleDrawing-=0.1;
      if (scaleDrawing<0.1) scaleDrawing=0.1;
