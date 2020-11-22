@@ -6,10 +6,10 @@
 //Opcions de configuració.
 //scaleDrawing defineix l'escala inicial, tot i que es pot canviar al les fletxes esquerra-dreta.
 //patternTiles permet afegir o reduir elements al fons, i modificar la mida d'aquests.
-//eyeSpeed configura el parpelleig.
+//eyeCycle configura el parpelleig.
 var scaleDrawing = 1;
 var patternTiles = 10; // com més gran, més elements tenim al fons, i més petits són.
-var eyeSpeed = 2000; //2 segons
+var eyeCycle = 2000; //2 segons
 
 //variable per guardar les instàncies de les classes.
 var ulls = [];
@@ -592,7 +592,7 @@ function setup() {
   //definim un framRate desitjat que permeti una animació fluida.
   frameRate(25);
   //la rutina que s'encarrega d'animar el parpelleig automàtic.
-  setInterval(parpelleig, eyeSpeed);
+  setTimeout(timeParpelleig, eyeCycle);
 };
 
 function draw() {
@@ -652,6 +652,12 @@ function draw() {
   strokeWeight(10);
   stroke(0,0,0);
   line(245,0,245,800); //Dibuixem la linia central
+}
+
+
+function timeParpelleig(){
+  parpelleig();
+  setTimeout(timeParpelleig, randomGaussian(2000, 500)); //amb aixó faig que el parpelleig sigui random en la frequéncia al voltant del temps desitjat (+-500 miliseconds).
 }
 
 //Itera per les parpelles i inicia el moviment. Cridat per timeout al setup.
