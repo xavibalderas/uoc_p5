@@ -8,7 +8,7 @@
 //patternTiles permet afegir o reduir elements al fons, i modificar la mida d'aquests.
 //eyeCycle configura el parpelleig.
 var scaleDrawing = 1;
-var patternTiles = 10; // com més gran, més elements tenim al fons, i més petits són.
+var patternTiles = 5; // com més gran, més elements tenim al fons, i més petits són.
 var eyeCycle = 2000; //2 segons
 
 //variable per guardar les instàncies de les classes.
@@ -548,12 +548,13 @@ class Parpella {
       //Si tenim moviment, actualitzem el valor de l'escala Y.
       // per fer una animació més natural, utilitzem funcions d'ease.
       if(this.enMoviment && this.tancar){
-        this.scale = easeOutCirc(this.scale + this.interval); 
+        var cambio = easeOutCirc(this.scale + this.interval); 
+        this.scale = cambio;//easeOutCirc(this.scale + this.interval); 
       }else if (this.enMoviment && !this.tancar){
         this.scale = easeInCirc(this.scale - this.interval) ;
       }else{
         this.scale = 0;
-      }
+      }   
       translate(this.anchor[0],this.anchor[1]); //ens movem a la posicó de l'escala
       scale(1,this.scale); //apliquem l'escala.
       this.poligon.forEach(poligon=>{
@@ -733,13 +734,19 @@ function translateCoords(x, y){
 
 //Ease per fer animació més natural. Basat en les funcions de Andrey Sitnik and Ivan Solovev https://easings.net/#
 function easeOutCirc(x) {
-  return round(sqrt(1 - pow(x - 1, 2)), 3);
+	//Sembla que al codelab hi ha alguna errada amb la funció "round()" de p5.js
+  //Utilitzo el mapping del source de p5.
+  var newValue = sqrt(1 - pow(x - 1, 2));
+  return Number(Math.round(newValue + 'e' + 3) + 'e-' + 3);
 }
 
 //Ease per fer animació més natural. Basat en les funcions de Andrey Sitnik and Ivan Solovev https://easings.net/#
 function easeInCirc(x) {
+  //Sembla que al codelab hi ha alguna errada amb la funció "round()" de p5.js
+  //Utilitzo el mapping del source de p5.
   if (x<0) return 0; // si el numero es <0, sqrt dona errada!
-  return round(1 - sqrt(1 - pow(x, 2)),5);
+  var newValue = 1 - sqrt(1 - pow(x, 2))
+  return Number(Math.round(newValue + 'e' + 5) + 'e-' + 5);
 }
 
 //Aquesta funció substueix les antigues dibuixarCaraPoligons, dibuixarCaraCorbes i dibuixarPoligon
